@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Student Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config = { theme: { fontFamily: { sans: ['Poppins','sans-serif'] }, extend: { colors: { primary: '#dc2626' } } } };</script>
+</head>
+<body class="bg-gray-100 font-sans">
+  <div class="flex min-h-screen">
+    <!-- Sidebar -->
+    <aside class="w-64 bg-white shadow p-4 fixed h-full overflow-y-auto">
+      <h2 class="font-semibold text-lg text-primary mb-4">Student</h2>
+      <nav class="space-y-2">
+        <button onclick="showTab('profile')" class="w-full text-left py-2 px-3 rounded hover:bg-gray-50">My Profile</button>
+        <button onclick="showTab('fees')" class="w-full text-left py-2 px-3 rounded hover:bg-gray-50">My Fees</button>
+        <button onclick="showTab('attendance')" class="w-full text-left py-2 px-3 rounded hover:bg-gray-50">Attendance</button>
+        <hr class="my-4">
+        <a href="index.html" id="logoutLink" class="block py-2 px-3 rounded hover:bg-gray-50">Logout</a>
+      </nav>
+    </aside>
+
+    <!-- Main content -->
+    <div class="flex-1 ml-64">
+      <header class="bg-primary text-white p-4 flex justify-between">
+        <h1 class="font-semibold">Student Dashboard</h1>
+        <div id="userEmail" class="text-sm"></div>
+      </header>
+
+      <!-- Profile Tab -->
+      <section id="profileTab" class="p-6">
+        <div class="bg-white p-6 rounded-xl shadow max-w-2xl">
+          <h2 id="profileName" class="text-2xl font-semibold text-primary mb-4">—</h2>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <p class="text-gray-600">Student ID:</p>
+              <p id="profileStudentId" class="font-semibold">—</p>
+            </div>
+            <div>
+              <p class="text-gray-600">Email:</p>
+              <p id="profileEmail" class="font-semibold">—</p>
+            </div>
+            <div>
+              <p class="text-gray-600">Phone:</p>
+              <p id="profilePhone" class="font-semibold">—</p>
+            </div>
+            <div>
+              <p class="text-gray-600">Classes:</p>
+              <p id="profileClasses" class="font-semibold">—</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Fees Tab -->
+      <section id="feesTab" class="hidden p-6">
+        <h2 class="text-2xl font-semibold mb-4">My Fee Records</h2>
+        <div class="bg-white rounded-xl shadow overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="p-3">Description</th>
+                <th class="p-3">Agreed Amount</th>
+                <th class="p-3">Total Paid</th>
+                <th class="p-3">Balance</th>
+                <th class="p-3">Status</th>
+              </tr>
+            </thead>
+            <tbody id="myFeesTable"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Attendance Tab -->
+      <section id="attendanceTab" class="hidden p-6">
+        <h2 class="text-2xl font-semibold mb-4">My Attendance</h2>
+        <div class="bg-white rounded-xl shadow overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="p-3">Date</th>
+                <th class="p-3">Teacher</th>
+                <th class="p-3">Status</th>
+              </tr>
+            </thead>
+            <tbody id="myAttendanceTable"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- Modal -->
+  <div id="modal" class="hidden fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+    <div class="bg-white p-6 rounded-lg w-80 text-center">
+      <p id="modalText" class="mb-4"></p>
+      <button onclick="closeModal()" class="bg-primary text-white px-4 py-2 rounded">OK</button>
+    </div>
+  </div>
+
+  <!-- Firebase Scripts -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+
+  <script src="assets/firebase-config.js"></script>
+  <script src="assets/app.js"></script>
+
+  <script>
+    let currentUserId = null;
+    let studentData = null;
+
+    function showTab(tabName){
+      document.querySelectorAll('section').forEach(s => s.classList.add('hidden'));
+      document.getElementById(tabName + 'Tab')?.classList.remove('hidden');
+    }
+
+    function closeModal(){
+      document.getElementById('modal').classList.add('hidden');
+    }
+
+    function showModal(msg){
+      document.getElementById('modalText').innerText = msg;
+      document.getElementById('modal').classList.remove('hidden');
+    }
+
+    async function loadProfile(){
+      try{
+        // For now, student is identified by auth user email matching students collection
+        const students = await window.app.getStudents();
+        const user = window._firebase.auth.currentUser;
+        studentData = students.find(s => s.email === user.email);
+
+        if (!studentData) {
+          showModal('Student profile not found. Contact admin.');
+          return;
+        }
+
+        document.getElementById('profileName').innerText = studentData.name || '—';
+        document.getElementById('profileStudentId').innerText = studentData.studentId || studentData.id;
+        document.getElementById('profileEmail').innerText = studentData.email || '—';
+        document.getElementById('profilePhone').innerText = studentData.phone || '—';
+        document.getElementById('profileClasses').innerText = (studentData.classes || []).length + ' class(es)';
+      }catch(e){
+        console.error(e);
+      }
+    }
+
+    async function loadMyFees(){
+      if (!studentData?.id) return;
+      const tbody = document.getElementById('myFeesTable');
+      tbody.innerHTML = '<tr><td class="p-3">Loading...</td></tr>';
+      try{
+        const fees = await window.app.getFeeRecordsForStudent(studentData.id);
+        if (!fees.length) {
+          tbody.innerHTML = '<tr><td class="p-3">No fee records</td></tr>';
+          return;
+        }
+        tbody.innerHTML = fees.map(f => {
+          const status = f.balance <= 0 ? 'Paid' : 'Pending';
+          const statusColor = status === 'Paid' ? 'text-green-600' : 'text-red-600';
+          return `
+            <tr class="border-t">
+              <td class="p-3">${f.description || '—'}</td>
+              <td class="p-3">₦${(f.agreedAmount || 0).toLocaleString()}</td>
+              <td class="p-3">₦${(f.totalPaid || 0).toLocaleString()}</td>
+              <td class="p-3">₦${(f.balance || 0).toLocaleString()}</td>
+              <td class="p-3 ${statusColor}">${status}</td>
+            </tr>`;
+        }).join('');
+      }catch(e){ console.error(e); }
+    }
+
+    async function loadMyAttendance(){
+      if (!studentData?.id) return;
+      const tbody = document.getElementById('myAttendanceTable');
+      tbody.innerHTML = '<tr><td class="p-3">Loading...</td></tr>';
+      try{
+        // Get attendance for last 90 days
+        const endDate = new Date().toISOString().split('T')[0];
+        const startDate = new Date(Date.now() - 90*24*60*60*1000).toISOString().split('T')[0];
+        const records = await window.app.getAttendanceForStudent(studentData.id, startDate, endDate);
+        if (!records.length) {
+          tbody.innerHTML = '<tr><td class="p-3">No attendance records</td></tr>';
+          return;
+        }
+        tbody.innerHTML = records.map(r => {
+          const status = r.present ? 'Present' : 'Absent';
+          const statusColor = r.present ? 'text-green-600' : 'text-red-600';
+          return `
+            <tr class="border-t">
+              <td class="p-3">${r.date}</td>
+              <td class="p-3">—</td>
+              <td class="p-3 ${statusColor}">${status}</td>
+            </tr>`;
+        }).join('');
+      }catch(e){ console.error(e); }
+    }
+
+    // Initialize
+    (async function(){
+      if (!window.app) return;
+      window.app.requireRole('student', 'index.html');
+
+      window._firebase?.auth.onAuthStateChanged(async user => {
+        if (user) {
+          document.getElementById('userEmail').innerText = user.email;
+          currentUserId = user.uid;
+          await loadProfile();
+          loadMyFees();
+          loadMyAttendance();
+        }
+      });
+
+      document.getElementById('logoutLink').addEventListener('click', async (e) => {
+        e.preventDefault();
+        await window.app.logout();
+        location.href = 'index.html';
+      });
+    })();
+  </script>
+</body>
+</html>

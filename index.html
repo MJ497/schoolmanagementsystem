@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>School System | Login</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Base -->
+  <!-- Firebase CDN (compat) and Chart.js loaded at end -->
+</head>
+<body class="bg-gray-100 font-sans flex items-center justify-center min-h-screen">
+
+  <div class="bg-white w-full max-w-md p-8 rounded-xl shadow">
+    <h1 class="text-2xl font-semibold text-center text-primary mb-6">
+      School Management Login
+    </h1>
+
+    <form id="loginForm" class="space-y-4">
+      <input id="email" type="email" placeholder="Email"
+        class="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary">
+
+      <input id="password" type="password" placeholder="Password"
+        class="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary">
+
+      <button id="loginBtn" type="button"
+        class="w-full bg-primary text-white py-2 rounded-lg hover:bg-red-700 transition">
+        Login
+      </button>
+    </form>
+  </div>
+
+  <!-- Modal -->
+  <div id="modal" class="hidden fixed inset-0 bg-black/40 flex items-center justify-center">
+    <div class="bg-white p-6 rounded-lg w-80 text-center">
+      <p id="modalText" class="mb-4"></p>
+      <button onclick="closeModal()"
+        class="bg-primary text-white px-4 py-2 rounded">OK</button>
+    </div>
+  </div>
+
+<script>
+  function showModal(message) {
+    document.getElementById('modalText').innerText = message;
+    document.getElementById('modal').classList.remove('hidden');
+  }
+  function closeModal() {
+    document.getElementById('modal').classList.add('hidden');
+  }
+</script>
+<!-- Tailwind -->
+<script src="https://cdn.tailwindcss.com"></script>
+
+<!-- Poppins -->
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<script>
+  tailwind.config = {
+    theme: {
+      fontFamily: {
+        sans: ['Poppins', 'sans-serif'],
+      },
+      extend: {
+        colors: {
+          primary: '#dc2626' // red-600
+        }
+      }
+    }
+  }
+</script>
+
+<!-- Firebase compat SDKs -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+
+<!-- App scripts -->
+<script src="assets/firebase-config.js"></script>
+<script src="assets/app.js"></script>
+
+<script>
+  const ADMIN_EMAIL = "admin@arena.com";
+
+  async function redirectByRole(){
+    if (!window._firebase) return;
+    const user = window._firebase.auth.currentUser;
+    if (!user) return;
+    
+    // If a temporary suppression flag is set (e.g., during admin user-creation), don't redirect.
+    if (sessionStorage.getItem('suppressRedirect')) return;
+
+    try{
+      const role = await window.app.getUserRole(user.uid);
+      const dashboards = { admin: 'admin.html', teacher: 'teacher.html', finance: 'finance.html', student: 'student.html' };
+      if (role && dashboards[role]) {
+        location.href = dashboards[role];
+      }
+    }catch(e){
+      console.error(e);
+    }
+  }
+
+  document.getElementById('loginBtn').addEventListener('click', async ()=>{
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    if (!email || !password) {
+      window.app.showModal('Please enter email and password');
+      return;
+    }
+    try{
+      await window.app.loginWithEmail(email, password);
+      
+      // Keep admin credentials in-memory so admin can create users without losing session
+      if (email === ADMIN_EMAIL) window._adminCredentials = { email, password };
+
+      // HARD ADMIN OVERRIDE
+      if (email === ADMIN_EMAIL) {
+        location.href = 'admin.html';
+        return;
+      }
+      
+      // ROLE-BASED ROUTING
+      await redirectByRole();
+    }catch(e){
+      window.app.showModal(e.message || 'Login failed');
+    }
+  });
+
+  // If already logged in, redirect by role
+  if (window._firebase) {
+    window._firebase.auth.onAuthStateChanged(user => { 
+      if(user) {
+        // HARD ADMIN OVERRIDE
+        if (user.email === ADMIN_EMAIL) {
+          location.href = 'admin.html';
+        } else {
+          redirectByRole();
+        }
+      }
+    });
+  }
+</script>
+</body>
+</html>

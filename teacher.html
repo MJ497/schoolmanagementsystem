@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Teacher Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script>tailwind.config = { theme: { fontFamily: { sans: ['Poppins','sans-serif'] }, extend: { colors: { primary: '#dc2626' } } } };</script>
+</head>
+<body class="bg-gray-100 font-sans">
+  <div class="flex min-h-screen">
+    <!-- Sidebar -->
+    <aside class="w-64 bg-white shadow p-4 fixed h-full overflow-y-auto">
+      <h2 class="font-semibold text-lg text-primary mb-4">Teacher</h2>
+      <nav class="space-y-2">
+        <button onclick="showTab('students')" class="w-full text-left py-2 px-3 rounded hover:bg-gray-50">My Students</button>
+        <button onclick="showTab('attendance')" class="w-full text-left py-2 px-3 rounded hover:bg-gray-50">Mark Attendance</button>
+        <button onclick="showTab('completion')" class="w-full text-left py-2 px-3 rounded hover:bg-gray-50">Mark Completion</button>
+        <hr class="my-4">
+        <a href="index.html" id="logoutLink" class="block py-2 px-3 rounded hover:bg-gray-50">Logout</a>
+      </nav>
+    </aside>
+
+    <!-- Main content -->
+    <div class="flex-1 ml-64">
+      <header class="bg-primary text-white p-4 flex justify-between">
+        <h1 class="font-semibold">Teacher Dashboard</h1>
+        <div id="userEmail" class="text-sm"></div>
+      </header>
+
+      <!-- My Students Tab -->
+      <section id="studentsTab" class="p-6">
+        <h2 class="text-2xl font-semibold mb-4">My Assigned Students</h2>
+        <div class="bg-white rounded-xl shadow overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="p-3">Student ID</th>
+                <th class="p-3">Name</th>
+                <th class="p-3">Email</th>
+                <th class="p-3">Classes</th>
+              </tr>
+            </thead>
+            <tbody id="myStudentsTable"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Attendance Tab -->
+      <section id="attendanceTab" class="hidden p-6">
+        <h2 class="text-2xl font-semibold mb-4">Mark Attendance</h2>
+        <div class="bg-white p-6 rounded-xl shadow mb-6">
+          <label class="block text-sm font-semibold mb-2">Select Date:</label>
+          <input id="attendanceDate" type="date" class="border rounded-lg px-3 py-2 mb-4">
+          <button onclick="loadAttendanceForm()" class="bg-primary text-white px-4 py-2 rounded">Load Classes for this Date</button>
+        </div>
+
+        <div id="attendanceContainer"></div>
+      </section>
+
+      <!-- Completion Tab -->
+      <section id="completionTab" class="hidden p-6">
+        <h2 class="text-2xl font-semibold mb-4">Mark Student as Completed</h2>
+        <div class="bg-white p-6 rounded-xl shadow mb-6">
+          <p class="text-sm text-gray-600 mb-4">Mark students as completed in their classes. Completed students will no longer appear on attendance sheets.</p>
+          <div id="completionContainer"></div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- Modal -->
+  <div id="modal" class="hidden fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+    <div class="bg-white p-6 rounded-lg w-80 text-center">
+      <p id="modalText" class="mb-4"></p>
+      <button onclick="closeModal()" class="bg-primary text-white px-4 py-2 rounded">OK</button>
+    </div>
+  </div>
+
+  <!-- Firebase Scripts -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+
+  <script src="assets/firebase-config.js"></script>
+  <script src="assets/app.js"></script>
+
+  <script>
+    let currentUserId = null;
+    let myStudents = [];
+
+    function showTab(tabName){
+      document.querySelectorAll('section').forEach(s => s.classList.add('hidden'));
+      document.getElementById(tabName + 'Tab')?.classList.remove('hidden');
+    }
+
+    function closeModal(){
+      document.getElementById('modal').classList.add('hidden');
+    }
+
+    function showModal(msg){
+      document.getElementById('modalText').innerText = msg;
+      document.getElementById('modal').classList.remove('hidden');
+    }
+
+    async function loadMyStudents(){
+      const tbody = document.getElementById('myStudentsTable');
+      tbody.innerHTML = '<tr><td class="p-3">Loading...</td></tr>';
+      try{
+        myStudents = await window.app.getStudentsForTeacher(currentUserId);
+        if (!myStudents.length) {
+          tbody.innerHTML = '<tr><td class="p-3">No students assigned to you yet</td></tr>';
+          return;
+        }
+        tbody.innerHTML = myStudents.map(s => `
+          <tr class="border-t hover:bg-gray-50">
+            <td class="p-3">${s.studentId || s.id}</td>
+            <td class="p-3">${s.name || '—'}</td>
+            <td class="p-3">${s.email || '—'}</td>
+            <td class="p-3 text-xs">${(s.classTeachers || []).length} class(es)</td>
+          </tr>`).join('');
+      }catch(e){
+        tbody.innerHTML = '<tr><td class="p-3 text-red-600">Error loading students</td></tr>';
+        console.error(e);
+      }
+    }
+
+    async function loadAttendanceForm(){
+      const dateInput = document.getElementById('attendanceDate').value;
+      if (!dateInput) {
+        showModal('Please select a date');
+        return;
+      }
+
+      const container = document.getElementById('attendanceContainer');
+      container.innerHTML = '<p class="text-gray-500">Loading...</p>';
+
+      try{
+        if (!myStudents.length) {
+          await loadMyStudents();
+        }
+
+        // Group students by class
+        const classesTaught = new Map();
+        myStudents.forEach(student => {
+          const classTeachers = student.classTeachers || [];
+          classTeachers.forEach(ct => {
+            if (ct.teacherId === currentUserId && !ct.isCompleted) {
+              // Check if class period is still active
+              const endDate = new Date(ct.endDate);
+              const today = new Date();
+              if (today <= endDate) {
+                if (!classesTaught.has(ct.classId)) {
+                  classesTaught.set(ct.classId, { classId: ct.classId, students: [] });
+                }
+                classesTaught.get(ct.classId).students.push(student);
+              }
+            }
+          });
+        });
+
+        if (classesTaught.size === 0) {
+          container.innerHTML = '<p class="text-gray-500">No active classes for this date</p>';
+          return;
+        }
+
+        // Fetch class names
+        const classes = await window.app.getClasses();
+        const classNameMap = {};
+        classes.forEach(c => classNameMap[c.id] = c.name);
+
+        // Generate attendance sheets for each class
+        let html = '';
+        classesTaught.forEach((classData, classId) => {
+          const className = classNameMap[classId] || 'Unknown Class';
+          html += `
+            <div class="bg-white rounded-xl shadow p-6 mb-6">
+              <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold">${className} - Attendance Sheet</h3>
+                <button onclick="downloadAttendancePDF('${classId}', '${className}')" class="bg-white text-primary px-4 py-2 rounded"> Download PDF</button>
+              </div>
+              <table class="w-full text-left text-sm mb-4">
+                <thead class="bg-gray-50">
+                  <tr>
+                    <th class="p-3">Student ID</th>
+                    <th class="p-3">Name</th>
+                    <th class="p-3">Present</th>
+                    <th class="p-3">Absent</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${classData.students.map(s => {
+                    const recordId = `${s.id}_${dateInput}_${classId}`;
+                    return `
+                      <tr class="border-t">
+                        <td class="p-3">${s.studentId || s.id}</td>
+                        <td class="p-3">${s.name || '—'}</td>
+                        <td class="p-3"><input type="radio" name="${recordId}" value="true" class="attendanceRadio"></td>
+                        <td class="p-3"><input type="radio" name="${recordId}" value="false" class="attendanceRadio"></td>
+                      </tr>`;
+                  }).join('')}
+                </tbody>
+              </table>
+            </div>
+          `;
+        });
+
+        html += `<button onclick="saveAttendance()" class="bg-primary text-white px-6 py-2 rounded font-semibold">Save All Attendance</button>`;
+        container.innerHTML = html;
+      }catch(e){
+        container.innerHTML = '<p class="text-red-600">Error loading attendance form</p>';
+        console.error(e);
+      }
+    }
+
+    async function saveAttendance(){
+      const dateInput = document.getElementById('attendanceDate').value;
+      if (!dateInput) {
+        showModal('Please select a date');
+        return;
+      }
+
+      try{
+        const radios = document.querySelectorAll('.attendanceRadio:checked');
+        let saved = 0;
+
+        for (const radio of radios) {
+          const name = radio.name; // format: studentId_date_classId
+          const [studentId, date, classId] = name.split('_');
+          const present = radio.value === 'true';
+
+          await window.app.markAttendance(currentUserId, studentId, dateInput, present);
+          saved++;
+        }
+
+        showModal(`${saved} attendance record(s) saved`);
+      }catch(e){
+        showModal(e.message || 'Error saving attendance');
+      }
+    }
+
+    function downloadAttendancePDF(classId, className){
+      const element = document.querySelector(`.bg-white.rounded-xl.shadow.p-6`);
+      const dateInput = document.getElementById('attendanceDate').value;
+      const options = {
+        margin: 10,
+        filename: `${className}_Attendance_${dateInput}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { orientation: 'landscape', unit: 'mm', format: 'a4' }
+      };
+      html2pdf().set(options).from(element).save();
+    }
+
+    async function loadCompletionForm(){
+      const container = document.getElementById('completionContainer');
+      container.innerHTML = '<p class="text-gray-500">Loading...</p>';
+
+      try{
+        if (!myStudents.length) {
+          await loadMyStudents();
+        }
+
+        // Group students by class and completion status
+        const classesWithStudents = new Map();
+        const classes = await window.app.getClasses();
+        const classNameMap = {};
+        classes.forEach(c => classNameMap[c.id] = c.name);
+
+        myStudents.forEach(student => {
+          const classTeachers = student.classTeachers || [];
+          classTeachers.forEach(ct => {
+            if (ct.teacherId === currentUserId && !ct.isCompleted) {
+              if (!classesWithStudents.has(ct.classId)) {
+                classesWithStudents.set(ct.classId, {
+                  classId: ct.classId,
+                  className: classNameMap[ct.classId],
+                  students: []
+                });
+              }
+              classesWithStudents.get(ct.classId).students.push(student);
+            }
+          });
+        });
+
+        if (classesWithStudents.size === 0) {
+          container.innerHTML = '<p class="text-gray-500">No active students to mark as completed</p>';
+          return;
+        }
+
+        let html = '';
+        classesWithStudents.forEach((classData) => {
+          html += `
+            <div class="bg-gray-50 rounded-lg p-4 mb-4">
+              <h3 class="font-semibold mb-3">${classData.className}</h3>
+              <div class="space-y-2">
+                ${classData.students.map(student => `
+                  <div class="flex justify-between items-center bg-white p-3 rounded">
+                    <div>
+                      <div class="font-medium">${student.name}</div>
+                      <div class="text-sm text-gray-500">${student.studentId}</div>
+                    </div>
+                    <button onclick="completeStudent('${student.id}', '${classData.classId}')" class="bg-green-500 text-white px-3 py-1 rounded text-sm">Mark Complete</button>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          `;
+        });
+
+        container.innerHTML = html;
+      }catch(e){
+        container.innerHTML = '<p class="text-red-600">Error loading completion form</p>';
+        console.error(e);
+      }
+    }
+
+    async function completeStudent(studentId, classId){
+      if (!confirm('Mark this student as completed in this class?')) return;
+
+      try{
+        await window.app.markStudentAsCompleted(studentId, classId);
+        showModal('Student marked as completed');
+        loadCompletionForm();
+      }catch(e){
+        showModal(e.message || 'Error marking student as completed');
+      }
+    }
+
+    // Initialize
+    (async function(){
+      if (!window.app) return;
+      window.app.requireRole('teacher', 'index.html');
+
+      window._firebase?.auth.onAuthStateChanged(async user => {
+        if (user) {
+          document.getElementById('userEmail').innerText = user.email;
+          currentUserId = user.uid;
+          loadMyStudents();
+        }
+      });
+
+      document.getElementById('logoutLink').addEventListener('click', async (e) => {
+        e.preventDefault();
+        await window.app.logout();
+        location.href = 'index.html';
+      });
+
+      // Set date input to today
+      const today = new Date().toISOString().split('T')[0];
+      document.getElementById('attendanceDate').value = today;
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Admin Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script>tailwind.config = { theme: { fontFamily: { sans: ['Poppins','sans-serif'] }, extend: { colors: { primary: '#dc2626' } } } };</script>
+</head>
+<body class="bg-gray-100 font-sans">
+  <div class="flex min-h-screen">
+    <!-- Sidebar -->
+    <aside class="w-64 bg-white shadow p-4 fixed h-full overflow-y-auto">
+      <h2 class="font-semibold text-lg text-primary mb-4">Admin</h2>
+      <nav class="space-y-2">
+        <button onclick="showTab('dashboard')" class="w-full text-left py-2 px-3 rounded hover:bg-gray-50">Dashboard</button>
+        <button onclick="showTab('students')" class="w-full text-left py-2 px-3 rounded hover:bg-gray-50">Students</button>
+        <button onclick="showTab('teachers')" class="w-full text-left py-2 px-3 rounded hover:bg-gray-50">Teachers</button>
+        <button onclick="showTab('finance')" class="w-full text-left py-2 px-3 rounded hover:bg-gray-50">Finance Staff</button>
+        <button onclick="showTab('classes')" class="w-full text-left py-2 px-3 rounded hover:bg-gray-50">Classes</button>
+        <button onclick="showTab('fees')" class="w-full text-left py-2 px-3 rounded hover:bg-gray-50">Fees Overview</button>
+        <hr class="my-4">
+        <a href="index.html" id="logoutLink" class="block py-2 px-3 rounded hover:bg-gray-50">Logout</a>
+      </nav>
+    </aside>
+
+    <!-- Main content -->
+    <div class="flex-1 ml-64">
+      <header class="bg-primary text-white p-4 flex justify-between">
+        <h1 class="font-semibold">Admin Dashboard</h1>
+        <div id="userEmail" class="text-sm"></div>
+      </header>
+
+      <!-- Dashboard Tab -->
+      <section id="dashboardTab" class="p-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div class="bg-white p-6 rounded-xl shadow">
+            <p class="text-gray-500">Total Students</p>
+            <h2 id="totalStudentsAdmin" class="text-3xl font-semibold text-primary">0</h2>
+          </div>
+          <div class="bg-white p-6 rounded-xl shadow">
+            <p class="text-gray-500">Total Teachers</p>
+            <h2 id="totalTeachers" class="text-3xl font-semibold text-primary">0</h2>
+          </div>
+          <div class="bg-white p-6 rounded-xl shadow">
+            <p class="text-gray-500">Finance Staff</p>
+            <h2 id="totalFinance" class="text-3xl font-semibold text-primary">0</h2>
+          </div>
+        </div>
+        <div class="bg-white p-6 rounded-xl shadow mt-6">
+          <h3 class="font-semibold mb-4">Students by Class</h3>
+          <canvas id="dashboardChartAdmin" width="400" height="120"></canvas>
+        </div>
+      </section>
+
+      <!-- Students Tab -->
+      <section id="studentsTab" class="hidden p-6">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-2xl font-semibold">Manage Students</h2>
+          <div class="space-x-2">
+            <button onclick="downloadStudentsPDF()" class="bg-white text-primary px-4 py-2 rounded"> Download PDF</button>
+            <button onclick="openAddStudentModal()" class="bg-primary text-white px-4 py-2 rounded">+ Add Student</button>
+          </div>
+        </div>
+        <div class="bg-white rounded-xl shadow overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="p-3">Student ID</th>
+                <th class="p-3">Name</th>
+                <th class="p-3">Email</th>
+                <th class="p-3">Classes</th>
+                <th class="p-3">Teachers</th>
+                <th class="p-3">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="studentsTableBodyAdmin"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Teachers Tab -->
+      <section id="teachersTab" class="hidden p-6">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-2xl font-semibold">Manage Teachers</h2>
+          <button onclick="openCreateUserModal('teacher')" class="bg-primary text-white px-4 py-2 rounded">+ Add Teacher</button>
+        </div>
+        <div class="bg-white rounded-xl shadow overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="p-3">Email</th>
+                <th class="p-3">Role</th>
+                <th class="p-3">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="teachersTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Finance Tab -->
+      <section id="financeTab" class="hidden p-6">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-2xl font-semibold">Manage Finance Staff</h2>
+          <button onclick="openCreateUserModal('finance')" class="bg-primary text-white px-4 py-2 rounded">+ Add Finance Staff</button>
+        </div>
+        <div class="bg-white rounded-xl shadow overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="p-3">Email</th>
+                <th class="p-3">Role</th>
+                <th class="p-3">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="financeTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Classes Tab -->
+      <section id="classesTab" class="hidden p-6">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-2xl font-semibold">Manage Classes</h2>
+          <button onclick="openAddClassModal()" class="bg-primary text-white px-4 py-2 rounded">+ Add Class</button>
+        </div>
+        <div class="bg-white rounded-xl shadow overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="p-3">Name</th>
+                <th class="p-3">Level</th>
+                <th class="p-3">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="classesTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Fees Overview Tab -->
+      <section id="feesTab" class="hidden p-6">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-2xl font-semibold">Fees Overview</h2>
+          <button onclick="downloadFeesPDF()" class="bg-green-600 text-white px-4 py-2 rounded">📥 Download PDF</button>
+        </div>
+        <div class="bg-white rounded-xl shadow overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="p-3">Student ID</th>
+                <th class="p-3">Student Name</th>
+                <th class="p-3">Agreed Amount</th>
+                <th class="p-3">Total Paid</th>
+                <th class="p-3">Balance</th>
+                <th class="p-3">Last Updated</th>
+              </tr>
+            </thead>
+            <tbody id="feesTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- Modals -->
+  <!-- Add Student Modal -->
+  <div id="addStudentModal" class="hidden fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+    <div class="bg-white p-6 rounded-lg w-96 max-h-96 overflow-y-auto">
+      <h3 class="text-xl font-semibold mb-4">Add Student</h3>
+      <input id="studentName" type="text" placeholder="Full Name" class="w-full border rounded-lg px-3 py-2 mb-3">
+      <input id="studentId" type="text" placeholder="Student ID" class="w-full border rounded-lg px-3 py-2 mb-3">
+      <input id="studentEmail" type="email" placeholder="Email" class="w-full border rounded-lg px-3 py-2 mb-3">
+      <input id="studentPhone" type="text" placeholder="Phone" class="w-full border rounded-lg px-3 py-2 mb-3">
+      
+      <label class="block text-sm font-semibold mb-2">Classes & Teachers:</label>
+      <div id="classTeacherPairs" class="bg-gray-50 rounded-lg p-3 mb-3 max-h-40 overflow-y-auto border">
+        <p class="text-gray-500 text-sm">No classes assigned yet</p>
+      </div>
+      
+      <div class="grid grid-cols-2 gap-2 mb-3">
+        <select id="studentClassSelect" class="border rounded-lg px-2 py-2 text-sm">
+          <option>Select class...</option>
+        </select>
+        <select id="studentTeacherSelect" class="border rounded-lg px-2 py-2 text-sm">
+          <option>Select teacher...</option>
+        </select>
+      </div>
+      <div class="grid grid-cols-2 gap-2 mb-3">
+        <input id="classStartDate" type="date" placeholder="Start Date" class="border rounded-lg px-2 py-2 text-sm">
+        <input id="classEndDate" type="date" placeholder="End Date" class="border rounded-lg px-2 py-2 text-sm">
+      </div>
+      <button onclick="addClassTeacherPair()" class="w-full bg-blue-500 text-white py-1 rounded text-sm mb-3">+ Add Class & Teacher</button>
+      
+      <div class="flex gap-2">
+        <button onclick="saveStudent()" class="flex-1 bg-primary text-white py-2 rounded">Save</button>
+        <button onclick="closeModal('addStudentModal')" class="flex-1 border py-2 rounded">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create User Modal (Teacher/Finance) -->
+  <div id="createUserModal" class="hidden fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+    <div class="bg-white p-6 rounded-lg w-96">
+      <h3 id="createUserTitle" class="text-xl font-semibold mb-4">Add User</h3>
+      <input id="newUserEmail" type="email" placeholder="Email" class="w-full border rounded-lg px-3 py-2 mb-3">
+      <input id="newUserPassword" type="password" placeholder="Password" class="w-full border rounded-lg px-3 py-2 mb-3">
+      <input id="newUserRole" type="hidden">
+      <div class="flex gap-2">
+        <button onclick="saveUser()" class="flex-1 bg-primary text-white py-2 rounded">Create</button>
+        <button onclick="closeModal('createUserModal')" class="flex-1 border py-2 rounded">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Class Modal -->
+  <div id="addClassModal" class="hidden fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+    <div class="bg-white p-6 rounded-lg w-96">
+      <h3 class="text-xl font-semibold mb-4">Add Class</h3>
+      <input id="className" type="text" placeholder="Class Name (e.g., JSS 2)" class="w-full border rounded-lg px-3 py-2 mb-3">
+      <input id="classLevel" type="text" placeholder="Level (e.g., Junior)" class="w-full border rounded-lg px-3 py-2 mb-3">
+      <div class="flex gap-2">
+        <button onclick="saveClass()" class="flex-1 bg-primary text-white py-2 rounded">Save</button>
+        <button onclick="closeModal('addClassModal')" class="flex-1 border py-2 rounded">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Student Modal -->
+  <div id="editStudentModal" class="hidden fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+    <div class="bg-white p-6 rounded-lg w-96 max-h-96 overflow-y-auto">
+      <h3 class="text-xl font-semibold mb-4">Edit Student</h3>
+      <input id="editStudentName" type="text" placeholder="Full Name" class="w-full border rounded-lg px-3 py-2 mb-3">
+      <input id="editStudentId" type="text" placeholder="Student ID" class="w-full border rounded-lg px-3 py-2 mb-3" disabled>
+      <input id="editStudentEmail" type="email" placeholder="Email" class="w-full border rounded-lg px-3 py-2 mb-3">
+      <input id="editStudentPhone" type="text" placeholder="Phone" class="w-full border rounded-lg px-3 py-2 mb-3">
+      
+      <label class="block text-sm font-semibold mb-2">Classes & Teachers:</label>
+      <div id="editClassTeacherPairs" class="bg-gray-50 rounded-lg p-3 mb-3 max-h-40 overflow-y-auto border">
+        <p class="text-gray-500 text-sm">No classes assigned yet</p>
+      </div>
+      
+      <div class="grid grid-cols-2 gap-2 mb-3">
+        <select id="editStudentClassSelect" class="border rounded-lg px-2 py-2 text-sm">
+          <option>Select class...</option>
+        </select>
+        <select id="editStudentTeacherSelect" class="border rounded-lg px-2 py-2 text-sm">
+          <option>Select teacher...</option>
+        </select>
+      </div>
+      <div class="grid grid-cols-2 gap-2 mb-3">
+        <input id="editClassStartDate" type="date" placeholder="Start Date" class="border rounded-lg px-2 py-2 text-sm">
+        <input id="editClassEndDate" type="date" placeholder="End Date" class="border rounded-lg px-2 py-2 text-sm">
+      </div>
+      <button onclick="addEditClassTeacherPair()" class="w-full bg-blue-500 text-white py-1 rounded text-sm mb-3">+ Add Class & Teacher</button>
+      
+      <div class="flex gap-2">
+        <button onclick="saveEditedStudent()" class="flex-1 bg-primary text-white py-2 rounded">Save</button>
+        <button onclick="closeModal('editStudentModal')" class="flex-1 border py-2 rounded">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Class Modal -->
+  <div id="editClassModal" class="hidden fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+    <div class="bg-white p-6 rounded-lg w-96">
+      <h3 class="text-xl font-semibold mb-4">Edit Class</h3>
+      <input id="editClassName" type="text" placeholder="Class Name" class="w-full border rounded-lg px-3 py-2 mb-3">
+      <input id="editClassLevel" type="text" placeholder="Level" class="w-full border rounded-lg px-3 py-2 mb-3">
+      <div class="flex gap-2">
+        <button onclick="saveEditedClass()" class="flex-1 bg-primary text-white py-2 rounded">Save</button>
+        <button onclick="closeModal('editClassModal')" class="flex-1 border py-2 rounded">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Generic Modal -->
+  <div id="modal" class="hidden fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+    <div class="bg-white p-6 rounded-lg w-80 text-center">
+      <p id="modalText" class="mb-4"></p>
+      <button onclick="closeModal('modal')" class="bg-primary text-white px-4 py-2 rounded">OK</button>
+    </div>
+  </div>
+
+  <!-- Firebase Scripts -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <script src="assets/firebase-config.js"></script>
+  <script src="assets/app.js"></script>
+
+  <script>
+    let currentUserRole = null;
+    let currentUserId = null;
+    let currentClassTeacherPairs = [];
+    let editClassTeacherPairs = [];
+    let classNameMap = {};
+    let teacherEmailMap = {};
+
+    function showTab(tabName){
+      document.querySelectorAll('section').forEach(s => s.classList.add('hidden'));
+      document.getElementById(tabName + 'Tab')?.classList.remove('hidden');
+    }
+
+    function closeModal(modalId){
+      document.getElementById(modalId).classList.add('hidden');
+    }
+
+    function showModal(msg){
+      document.getElementById('modalText').innerText = msg;
+      document.getElementById('modal').classList.remove('hidden');
+    }
+
+    function openAddStudentModal(){
+      document.getElementById('addStudentModal').classList.remove('hidden');
+      loadClassesAndTeachers();
+      currentClassTeacherPairs = [];
+      renderClassTeacherPairs();
+    }
+
+    function openCreateUserModal(role){
+      document.getElementById('createUserTitle').innerText = role === 'teacher' ? 'Add Teacher' : 'Add Finance Staff';
+      document.getElementById('newUserRole').value = role;
+      document.getElementById('newUserEmail').value = '';
+      document.getElementById('newUserPassword').value = '';
+      document.getElementById('createUserModal').classList.remove('hidden');
+    }
+
+    function openAddClassModal(){
+      document.getElementById('className').value = '';
+      document.getElementById('classLevel').value = '';
+      document.getElementById('addClassModal').classList.remove('hidden');
+    }
+
+    async function loadClassesAndTeachers(){
+      try{
+        const classes = await window.app.getClasses();
+        const teachers = await window.app.getTeachers();
+        
+        classNameMap = {};
+        teacherEmailMap = {};
+        classes.forEach(c => classNameMap[c.id] = c.name);
+        teachers.forEach(t => teacherEmailMap[t.id] = t.email);
+        
+        document.getElementById('studentClassSelect').innerHTML = '<option value="">Select class...</option>' + classes.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+        document.getElementById('studentTeacherSelect').innerHTML = '<option value="">Select teacher...</option>' + teachers.map(t => `<option value="${t.id}">${t.email}</option>`).join('');
+        document.getElementById('editStudentClassSelect').innerHTML = '<option value="">Select class...</option>' + classes.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+        document.getElementById('editStudentTeacherSelect').innerHTML = '<option value="">Select teacher...</option>' + teachers.map(t => `<option value="${t.id}">${t.email}</option>`).join('');
+      }catch(e){ console.error(e); }
+    }
+
+    function addClassTeacherPair(){
+      const classId = document.getElementById('studentClassSelect').value;
+      const teacherId = document.getElementById('studentTeacherSelect').value;
+      const startDate = document.getElementById('classStartDate').value;
+      const endDate = document.getElementById('classEndDate').value;
+      
+      if (!classId || !teacherId || !startDate || !endDate) {
+        showModal('Please select class, teacher, and dates');
+        return;
+      }
+      if (currentClassTeacherPairs.some(p => p.classId === classId)) {
+        showModal('This class is already assigned');
+        return;
+      }
+      currentClassTeacherPairs.push({ classId, teacherId, startDate, endDate, isCompleted: false });
+      renderClassTeacherPairs();
+      document.getElementById('studentClassSelect').value = '';
+      document.getElementById('studentTeacherSelect').value = '';
+      document.getElementById('classStartDate').value = '';
+      document.getElementById('classEndDate').value = '';
+    }
+
+    function addEditClassTeacherPair(){
+      const classId = document.getElementById('editStudentClassSelect').value;
+      const teacherId = document.getElementById('editStudentTeacherSelect').value;
+      const startDate = document.getElementById('editClassStartDate').value;
+      const endDate = document.getElementById('editClassEndDate').value;
+      
+      if (!classId || !teacherId || !startDate || !endDate) {
+        showModal('Please select class, teacher, and dates');
+        return;
+      }
+      if (editClassTeacherPairs.some(p => p.classId === classId)) {
+        showModal('This class is already assigned');
+        return;
+      }
+      editClassTeacherPairs.push({ classId, teacherId, startDate, endDate, isCompleted: false });
+      renderEditClassTeacherPairs();
+      document.getElementById('editStudentClassSelect').value = '';
+      document.getElementById('editStudentTeacherSelect').value = '';
+      document.getElementById('editClassStartDate').value = '';
+      document.getElementById('editClassEndDate').value = '';
+    }
+
+    function renderClassTeacherPairs(){
+      const container = document.getElementById('classTeacherPairs');
+      if (!currentClassTeacherPairs.length) {
+        container.innerHTML = '<p class="text-gray-500 text-sm">No classes assigned yet</p>';
+        return;
+      }
+      container.innerHTML = currentClassTeacherPairs.map((p, idx) => `
+        <div class="flex justify-between items-start bg-white p-2 rounded mb-2 text-xs">
+          <div>
+            <div>${classNameMap[p.classId] || '?'} - ${teacherEmailMap[p.teacherId] || '?'}</div>
+            <div class="text-gray-500">${p.startDate} to ${p.endDate}</div>
+          </div>
+          <button onclick="removeClassTeacherPair(${idx})" class="text-red-600 font-semibold">Remove</button>
+        </div>
+      `).join('');
+    }
+
+    function renderEditClassTeacherPairs(){
+      const container = document.getElementById('editClassTeacherPairs');
+      if (!editClassTeacherPairs.length) {
+        container.innerHTML = '<p class="text-gray-500 text-sm">No classes assigned yet</p>';
+        return;
+      }
+      container.innerHTML = editClassTeacherPairs.map((p, idx) => `
+        <div class="flex justify-between items-start bg-white p-2 rounded mb-2 text-xs">
+          <div>
+            <div>${classNameMap[p.classId] || '?'} - ${teacherEmailMap[p.teacherId] || '?'}</div>
+            <div class="text-gray-500">${p.startDate} to ${p.endDate}</div>
+          </div>
+          <button onclick="removeEditClassTeacherPair(${idx})" class="text-red-600 font-semibold">Remove</button>
+        </div>
+      `).join('');
+    }
+
+    function removeClassTeacherPair(index){
+      currentClassTeacherPairs.splice(index, 1);
+      renderClassTeacherPairs();
+    }
+
+    function removeEditClassTeacherPair(index){
+      editClassTeacherPairs.splice(index, 1);
+      renderEditClassTeacherPairs();
+    }
+
+    async function loadClasses(){
+      try{
+        const classes = await window.app.getClasses();
+        const select = document.getElementById('studentClasses');
+        select.innerHTML = classes.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+      }catch(e){ console.error(e); }
+    }
+
+    async function loadTeachers(){
+      try{
+        const teachers = await window.app.getTeachers();
+        const select = document.getElementById('studentTeachers');
+        select.innerHTML = teachers.map(t => `<option value="${t.id}">${t.email}</option>`).join('');
+      }catch(e){ console.error(e); }
+    }
+
+    async function saveStudent(){
+      const name = document.getElementById('studentName').value;
+      const studentId = document.getElementById('studentId').value;
+      const email = document.getElementById('studentEmail').value;
+      const phone = document.getElementById('studentPhone').value;
+
+      if (!name || !studentId) {
+        showModal('Name and Student ID required');
+        return;
+      }
+
+      if (!currentClassTeacherPairs.length) {
+        showModal('Please assign at least one class and teacher');
+        return;
+      }
+
+      try{
+        await window.app.createStudent({ name, studentId, email, phone, classTeachers: currentClassTeacherPairs });
+        closeModal('addStudentModal');
+        showModal('Student added successfully');
+        loadStudentsTable();
+      }catch(e){
+        showModal(e.message || 'Error adding student');
+      }
+    }
+
+    async function saveUser(){
+      const email = document.getElementById('newUserEmail').value;
+      const password = document.getElementById('newUserPassword').value;
+      const role = document.getElementById('newUserRole').value;
+
+      if (!email || !password) {
+        showModal('Email and password required');
+        return;
+      }
+
+      try{
+        await window.app.createUser(email, password, role);
+        closeModal('createUserModal');
+        showModal(`${role.charAt(0).toUpperCase() + role.slice(1)} created successfully`);
+        if(role === 'teacher') loadTeachersTable();
+        else loadFinanceTable();
+      }catch(e){
+        showModal(e.message || 'Error creating user');
+      }
+    }
+
+    async function saveClass(){
+      const name = document.getElementById('className').value;
+      const level = document.getElementById('classLevel').value;
+
+      if (!name) {
+        showModal('Class name required');
+        return;
+      }
+
+      try{
+        await window.app.createClass(name, level);
+        closeModal('addClassModal');
+        showModal('Class added successfully');
+        loadClassesTable();
+      }catch(e){
+        showModal(e.message || 'Error adding class');
+      }
+    }
+
+    async function loadStudentsTable(){
+      const tbody = document.getElementById('studentsTableBodyAdmin');
+      tbody.innerHTML = '<tr><td class="p-3">Loading...</td></tr>';
+      try{
+        const students = await window.app.getStudents();
+        if (!students.length) {
+          tbody.innerHTML = '<tr><td class="p-3">No students found</td></tr>';
+          return;
+        }
+        tbody.innerHTML = students.map(s => `
+          <tr class="border-t hover:bg-gray-50">
+            <td class="p-3">${s.studentId || s.id}</td>
+            <td class="p-3">${s.name || '—'}</td>
+            <td class="p-3">${s.email || '—'}</td>
+            <td class="p-3 text-xs">${(s.classTeachers || []).length} assigned</td>
+            <td class="p-3 text-xs">${(s.classTeachers || []).length} assigned</td>
+            <td class="p-3"><button onclick="editStudent('${s.id}')" class="text-primary text-xs">Edit</button> | <button onclick="deleteStudentRecord('${s.id}')" class="text-red-600 text-xs">Delete</button></td>
+          </tr>`).join('');
+      }catch(e){
+        tbody.innerHTML = '<tr><td class="p-3 text-red-600">Error loading students</td></tr>';
+        console.error(e);
+      }
+    }
+
+    async function loadTeachersTable(){
+      const tbody = document.getElementById('teachersTableBody');
+      tbody.innerHTML = '<tr><td class="p-3">Loading...</td></tr>';
+      try{
+        const teachers = await window.app.getTeachers();
+        tbody.innerHTML = teachers.map(t => `
+          <tr class="border-t hover:bg-gray-50">
+            <td class="p-3">${t.email}</td>
+            <td class="p-3">${t.role}</td>
+            <td class="p-3"><button onclick="deleteTeacher('${t.id}')" class="text-red-600 text-xs">Delete</button></td>
+          </tr>`).join('');
+      }catch(e){
+        console.error(e);
+      }
+    }
+
+    async function loadFinanceTable(){
+      const tbody = document.getElementById('financeTableBody');
+      tbody.innerHTML = '<tr><td class="p-3">Loading...</td></tr>';
+      try{
+        const finance = await window.app.getFinanceUsers();
+        tbody.innerHTML = finance.map(f => `
+          <tr class="border-t hover:bg-gray-50">
+            <td class="p-3">${f.email}</td>
+            <td class="p-3">${f.role}</td>
+            <td class="p-3"><button onclick="deleteFinanceUser('${f.id}')" class="text-red-600 text-xs">Delete</button></td>
+          </tr>`).join('');
+      }catch(e){
+        console.error(e);
+      }
+    }
+
+    async function loadClassesTable(){
+      const tbody = document.getElementById('classesTableBody');
+      tbody.innerHTML = '<tr><td class="p-3">Loading...</td></tr>';
+      try{
+        const classes = await window.app.getClasses();
+        tbody.innerHTML = classes.map(c => `
+          <tr class="border-t hover:bg-gray-50">
+            <td class="p-3">${c.name}</td>
+            <td class="p-3">${c.level || '—'}</td>
+            <td class="p-3"><button onclick="editClass('${c.id}')" class="text-primary text-xs">Edit</button> | <button onclick="deleteClass('${c.id}')" class="text-red-600 text-xs">Delete</button></td>
+          </tr>`).join('');
+      }catch(e){
+        console.error(e);
+      }
+    }
+
+    async function loadFeesTable(){
+      const tbody = document.getElementById('feesTableBody');
+      tbody.innerHTML = '<tr><td class="p-3">Loading...</td></tr>';
+      try{
+        const fees = await window.app.getAllFeeRecords();
+        const students = await window.app.getStudents();
+        const studentsMap = {};
+        students.forEach(s => studentsMap[s.id] = s);
+
+        tbody.innerHTML = fees.map(f => {
+          const student = studentsMap[f.studentId] || {};
+          return `
+            <tr class="border-t hover:bg-gray-50">
+              <td class="p-3">${student.studentId || f.studentId}</td>
+              <td class="p-3">${student.name || '—'}</td>
+              <td class="p-3">₦${(f.agreedAmount || 0).toLocaleString()}</td>
+              <td class="p-3">₦${(f.totalPaid || 0).toLocaleString()}</td>
+              <td class="p-3">₦${(f.balance || 0).toLocaleString()}</td>
+              <td class="p-3 text-xs">${new Date(f.updatedAt?.toDate?.() || Date.now()).toLocaleDateString()}</td>
+            </tr>`;
+        }).join('');
+      }catch(e){
+        console.error(e);
+      }
+    }
+
+    async function deleteStudentRecord(studentId){
+      if (!confirm('Are you sure?')) return;
+      try{
+        await window.app.deleteStudent(studentId);
+        showModal('Student deleted successfully');
+        loadStudentsTable();
+      }catch(e){
+        showModal(e.message || 'Error deleting student');
+      }
+    }
+
+    async function deleteTeacher(teacherId){
+      if (!confirm('Are you sure you want to delete this teacher?')) return;
+      try{
+        await window.app.deleteUser(teacherId);
+        showModal('Teacher deleted successfully');
+        loadTeachersTable();
+      }catch(e){
+        showModal(e.message || 'Error deleting teacher');
+      }
+    }
+
+    async function deleteFinanceUser(financeId){
+      if (!confirm('Are you sure you want to delete this finance staff member?')) return;
+      try{
+        await window.app.deleteUser(financeId);
+        showModal('Finance staff deleted successfully');
+        loadFinanceTable();
+      }catch(e){
+        showModal(e.message || 'Error deleting finance staff');
+      }
+    }
+
+    async function editClass(classId){
+      try{
+        const classes = await window.app.getClasses();
+        const classData = classes.find(c => c.id === classId);
+        if (!classData) {
+          showModal('Class not found');
+          return;
+        }
+        document.getElementById('editClassName').value = classData.name || '';
+        document.getElementById('editClassLevel').value = classData.level || '';
+        document.getElementById('editClassModal').dataset.classId = classId;
+        document.getElementById('editClassModal').classList.remove('hidden');
+      }catch(e){
+        showModal(e.message || 'Error loading class');
+      }
+    }
+
+    async function saveEditedClass(){
+      const classId = document.getElementById('editClassModal').dataset.classId;
+      const name = document.getElementById('editClassName').value;
+      const level = document.getElementById('editClassLevel').value;
+
+      if (!name) {
+        showModal('Class name required');
+        return;
+      }
+
+      try{
+        await window.app.updateClass(classId, { name, level });
+        closeModal('editClassModal');
+        showModal('Class updated successfully');
+        loadClassesTable();
+      }catch(e){
+        showModal(e.message || 'Error updating class');
+      }
+    }
+
+    async function deleteClass(classId){
+      if (!confirm('Are you sure you want to delete this class?')) return;
+      try{
+        await window.app.deleteClass(classId);
+        showModal('Class deleted successfully');
+        loadClassesTable();
+      }catch(e){
+        showModal(e.message || 'Error deleting class');
+      }
+    }
+
+    async function editStudent(studentId){
+      try{
+        const student = await window.app.getStudentById(studentId);
+        if (!student) {
+          showModal('Student not found');
+          return;
+        }
+        document.getElementById('editStudentName').value = student.name || '';
+        document.getElementById('editStudentId').value = student.studentId || studentId;
+        document.getElementById('editStudentEmail').value = student.email || '';
+        document.getElementById('editStudentPhone').value = student.phone || '';
+        document.getElementById('editStudentModal').dataset.studentId = studentId;
+        
+        // Load classes and teachers for editing
+        await loadClassesAndTeachers();
+        
+        editClassTeacherPairs = student.classTeachers || [];
+        renderEditClassTeacherPairs();
+        
+        document.getElementById('editStudentModal').classList.remove('hidden');
+      }catch(e){
+        showModal(e.message || 'Error loading student');
+      }
+    }
+
+    async function saveEditedStudent(){
+      const studentId = document.getElementById('editStudentModal').dataset.studentId;
+      const name = document.getElementById('editStudentName').value;
+      const email = document.getElementById('editStudentEmail').value;
+      const phone = document.getElementById('editStudentPhone').value;
+
+      if (!name) {
+        showModal('Name required');
+        return;
+      }
+
+      if (!editClassTeacherPairs.length) {
+        showModal('Please assign at least one class and teacher');
+        return;
+      }
+
+      try{
+        await window.app.updateStudent(studentId, { name, email, phone, classTeachers: editClassTeacherPairs });
+        closeModal('editStudentModal');
+        showModal('Student updated successfully');
+        loadStudentsTable();
+      }catch(e){
+        showModal(e.message || 'Error updating student');
+      }
+    }
+
+    async function loadDashboard(){
+      try{
+        const students = await window.app.getStudents();
+        const teachers = await window.app.getTeachers();
+        const finance = await window.app.getFinanceUsers();
+
+        document.getElementById('totalStudentsAdmin').innerText = students.length;
+        document.getElementById('totalTeachers').innerText = teachers.length;
+        document.getElementById('totalFinance').innerText = finance.length;
+
+        // Chart
+        const byClass = {};
+        students.forEach(s => {
+          const k = (s.classes || []).length > 0 ? s.classes[0] : 'Unassigned';
+          byClass[k] = (byClass[k] || 0) + 1;
+        });
+        const labels = Object.keys(byClass);
+        const data = Object.values(byClass);
+        const ctx = document.getElementById('dashboardChartAdmin')?.getContext('2d');
+        if (ctx){
+          new Chart(ctx, {
+            type: 'bar',
+            data: { labels, datasets: [{ label: 'Students', data, backgroundColor: '#dc2626' }] },
+            options: { responsive: true }
+          });
+        }
+      }catch(e){ console.error(e); }
+    }
+
+    async function downloadStudentsPDF(){
+      try{
+        const students = await window.app.getStudents();
+        if (!students.length) {
+          showModal('No students to download');
+          return;
+        }
+
+        let htmlContent = `
+          <h2 style="text-align: center; font-size: 20px; margin-bottom: 20px;">Students List</h2>
+          <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+            <thead>
+              <tr style="background-color: #f0f0f0;">
+                <th style="border: 1px solid #ddd; padding: 10px;">Student ID</th>
+                <th style="border: 1px solid #ddd; padding: 10px;">Name</th>
+                <th style="border: 1px solid #ddd; padding: 10px;">Email</th>
+                <th style="border: 1px solid #ddd; padding: 10px;">Phone</th>
+                <th style="border: 1px solid #ddd; padding: 10px;">Classes</th>
+              </tr>
+            </thead>
+            <tbody>`;
+
+        students.forEach(s => {
+          const classCount = (s.classTeachers || []).length;
+          htmlContent += `
+            <tr>
+              <td style="border: 1px solid #ddd; padding: 10px;">${s.studentId || s.id}</td>
+              <td style="border: 1px solid #ddd; padding: 10px;">${s.name || '—'}</td>
+              <td style="border: 1px solid #ddd; padding: 10px;">${s.email || '—'}</td>
+              <td style="border: 1px solid #ddd; padding: 10px;">${s.phone || '—'}</td>
+              <td style="border: 1px solid #ddd; padding: 10px;">${classCount} assigned</td>
+            </tr>`;
+        });
+
+        htmlContent += '</tbody></table>';
+
+        const element = document.createElement('div');
+        element.innerHTML = htmlContent;
+
+        const options = {
+          margin: 10,
+          filename: 'students_list.pdf',
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { scale: 2 },
+          jsPDF: { orientation: 'landscape', unit: 'mm', format: 'a4' }
+        };
+
+        html2pdf().set(options).from(element).save();
+      }catch(e){
+        showModal(e.message || 'Error downloading PDF');
+        console.error(e);
+      }
+    }
+
+    async function downloadFeesPDF(){
+      try{
+        const fees = await window.app.getAllFeeRecords();
+        const students = await window.app.getStudents();
+        const studentsMap = {};
+        students.forEach(s => studentsMap[s.id] = s);
+
+        if (!fees.length) {
+          showModal('No fees to download');
+          return;
+        }
+
+        let htmlContent = `
+          <h2 style="text-align: center; font-size: 20px; margin-bottom: 20px;">Fees Overview Report</h2>
+          <p style="text-align: center; margin-bottom: 20px;">Generated: ${new Date().toLocaleDateString()}</p>
+          <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+            <thead>
+              <tr style="background-color: #f0f0f0;">
+                <th style="border: 1px solid #ddd; padding: 10px;">Student ID</th>
+                <th style="border: 1px solid #ddd; padding: 10px;">Name</th>
+                <th style="border: 1px solid #ddd; padding: 10px;">Agreed Amount</th>
+                <th style="border: 1px solid #ddd; padding: 10px;">Total Paid</th>
+                <th style="border: 1px solid #ddd; padding: 10px;">Balance</th>
+                <th style="border: 1px solid #ddd; padding: 10px;">Last Updated</th>
+              </tr>
+            </thead>
+            <tbody>`;
+
+        let totalAgreed = 0, totalPaid = 0, totalBalance = 0;
+
+        fees.forEach(f => {
+          const student = studentsMap[f.studentId] || {};
+          const agreed = f.agreedAmount || 0;
+          const paid = f.totalPaid || 0;
+          const balance = f.balance || 0;
+          totalAgreed += agreed;
+          totalPaid += paid;
+          totalBalance += balance;
+
+          htmlContent += `
+            <tr>
+              <td style="border: 1px solid #ddd; padding: 10px;">${student.studentId || f.studentId}</td>
+              <td style="border: 1px solid #ddd; padding: 10px;">${student.name || '—'}</td>
+              <td style="border: 1px solid #ddd; padding: 10px; text-align: right;">₦${agreed.toLocaleString()}</td>
+              <td style="border: 1px solid #ddd; padding: 10px; text-align: right;">₦${paid.toLocaleString()}</td>
+              <td style="border: 1px solid #ddd; padding: 10px; text-align: right;">₦${balance.toLocaleString()}</td>
+              <td style="border: 1px solid #ddd; padding: 10px;">${new Date(f.updatedAt?.toDate?.() || Date.now()).toLocaleDateString()}</td>
+            </tr>`;
+        });
+
+        htmlContent += `
+          <tr style="background-color: #f0f0f0; font-weight: bold;">
+            <td colspan="2" style="border: 1px solid #ddd; padding: 10px;">TOTAL</td>
+            <td style="border: 1px solid #ddd; padding: 10px; text-align: right;">₦${totalAgreed.toLocaleString()}</td>
+            <td style="border: 1px solid #ddd; padding: 10px; text-align: right;">₦${totalPaid.toLocaleString()}</td>
+            <td style="border: 1px solid #ddd; padding: 10px; text-align: right;">₦${totalBalance.toLocaleString()}</td>
+            <td style="border: 1px solid #ddd; padding: 10px;"></td>
+          </tr>
+        </tbody></table>`;
+
+        const element = document.createElement('div');
+        element.innerHTML = htmlContent;
+
+        const options = {
+          margin: 10,
+          filename: 'fees_overview.pdf',
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { scale: 2 },
+          jsPDF: { orientation: 'landscape', unit: 'mm', format: 'a4' }
+        };
+
+        html2pdf().set(options).from(element).save();
+      }catch(e){
+        showModal(e.message || 'Error downloading PDF');
+        console.error(e);
+      }
+    }
+
+    // Initialize
+    (async function(){
+      if (!window.app) return;
+      window.app.requireRole('admin', 'index.html');
+      
+      window._firebase?.auth.onAuthStateChanged(async user => {
+        if (user) {
+          document.getElementById('userEmail').innerText = user.email;
+          currentUserId = user.uid;
+          loadDashboard();
+          loadStudentsTable();
+          loadTeachersTable();
+          loadFinanceTable();
+          loadClassesTable();
+          loadFeesTable();
+        }
+      });
+
+      document.getElementById('logoutLink').addEventListener('click', async (e) => {
+        e.preventDefault();
+        await window.app.logout();
+        location.href = 'index.html';
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Finance Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script>tailwind.config = { theme: { fontFamily: { sans: ['Poppins','sans-serif'] }, extend: { colors: { primary: '#dc2626' } } } };</script>
+</head>
+<body class="bg-gray-100 font-sans">
+  <div class="flex min-h-screen">
+    <!-- Sidebar -->
+    <aside class="w-64 bg-white shadow p-4 fixed h-full overflow-y-auto">
+      <h2 class="font-semibold text-lg text-primary mb-4">Finance</h2>
+      <nav class="space-y-2">
+        <button onclick="showTab('overview')" class="w-full text-left py-2 px-3 rounded hover:bg-gray-50">Fee Overview</button>
+        <button onclick="showTab('students')" class="w-full text-left py-2 px-3 rounded hover:bg-gray-50">Student Fees</button>
+        <hr class="my-4">
+        <a href="index.html" id="logoutLink" class="block py-2 px-3 rounded hover:bg-gray-50">Logout</a>
+      </nav>
+    </aside>
+
+    <!-- Main content -->
+    <div class="flex-1 ml-64">
+      <header class="bg-primary text-white p-4 flex justify-between">
+        <h1 class="font-semibold">Finance Dashboard</h1>
+        <div id="userEmail" class="text-sm"></div>
+      </header>
+
+      <!-- Overview Tab -->
+      <section id="overviewTab" class="p-6">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-2xl font-semibold">Fee Overview</h2>
+          <button onclick="downloadFeeOverviewPDF()" class="bg-white text-primary px-4 py-2 rounded"> Download PDF</button>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          <div class="bg-white p-6 rounded-xl shadow">
+            <p class="text-gray-500">Total Students</p>
+            <h2 id="totalStudents" class="text-3xl font-semibold text-primary">0</h2>
+          </div>
+          <div class="bg-white p-6 rounded-xl shadow">
+            <p class="text-gray-500">Total Fees Expected</p>
+            <h2 id="totalExpected" class="text-3xl font-semibold text-primary">₦0</h2>
+          </div>
+          <div class="bg-white p-6 rounded-xl shadow">
+            <p class="text-gray-500">Total Paid</p>
+            <h2 id="totalPaid" class="text-3xl font-semibold text-primary">₦0</h2>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="p-3">Student ID</th>
+                <th class="p-3">Student Name</th>
+                <th class="p-3">Agreed Amount</th>
+                <th class="p-3">Total Paid</th>
+                <th class="p-3">Balance</th>
+                <th class="p-3">Status</th>
+                <th class="p-3">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="feesOverviewTable"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Student Fees Tab -->
+      <section id="studentsTab" class="hidden p-6">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-2xl font-semibold">Student Fees & Payments</h2>
+          <button onclick="downloadStudentFeePDF()" class="bg-white text-primary px-4 py-2 rounded" id="downloadStudentBtn" style="display: none;"> Download PDF</button>
+        </div>
+        
+        <div class="bg-white p-6 rounded-xl shadow mb-6">
+          <label class="block text-sm font-semibold mb-2">Select Student:</label>
+          <select id="studentSelect" onchange="loadStudentFees()" class="border rounded-lg px-3 py-2 w-full md:w-96">
+            <option>Loading...</option>
+          </select>
+        </div>
+
+        <div class="bg-white rounded-xl shadow overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="p-3">Description</th>
+                <th class="p-3">Agreed Amount</th>
+                <th class="p-3">Total Paid</th>
+                <th class="p-3">Balance</th>
+                <th class="p-3">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="studentFeesTable"></tbody>
+          </table>
+        </div>
+
+        <div id="paymentHistorySection" class="hidden mt-6 bg-white p-6 rounded-xl shadow">
+          <h3 class="text-xl font-semibold mb-4">Payment History</h3>
+          <div id="paymentHistoryTable"></div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- Add Payment Modal -->
+  <div id="addPaymentModal" class="hidden fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+    <div class="bg-white p-6 rounded-lg w-96">
+      <h3 class="text-xl font-semibold mb-4">Add Payment</h3>
+      <input id="paymentAmount" type="number" placeholder="Amount" class="w-full border rounded-lg px-3 py-2 mb-3">
+      <input id="paymentDate" type="date" class="w-full border rounded-lg px-3 py-2 mb-3">
+      <textarea id="paymentNotes" placeholder="Notes (optional)" class="w-full border rounded-lg px-3 py-2 mb-3 h-20"></textarea>
+      <div class="flex gap-2">
+        <button onclick="savePayment()" class="flex-1 bg-primary text-white py-2 rounded">Save Payment</button>
+        <button onclick="closeModal('addPaymentModal')" class="flex-1 border py-2 rounded">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create Fee Modal -->
+  <div id="createFeeModal" class="hidden fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+    <div class="bg-white p-6 rounded-lg w-96">
+      <h3 class="text-xl font-semibold mb-4">Create Fee Record</h3>
+      <input id="feeStudentId" type="hidden">
+      <input id="feeAmount" type="number" placeholder="Agreed Amount" class="w-full border rounded-lg px-3 py-2 mb-3">
+      <input id="feeDescription" type="text" placeholder="Description (e.g., Tuition 2026)" class="w-full border rounded-lg px-3 py-2 mb-3">
+      <div class="flex gap-2">
+        <button onclick="saveFeeRecord()" class="flex-1 bg-primary text-white py-2 rounded">Create</button>
+        <button onclick="closeModal('createFeeModal')" class="flex-1 border py-2 rounded">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal -->
+  <div id="modal" class="hidden fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+    <div class="bg-white p-6 rounded-lg w-80 text-center">
+      <p id="modalText" class="mb-4"></p>
+      <button onclick="closeModal('modal')" class="bg-primary text-white px-4 py-2 rounded">OK</button>
+    </div>
+  </div>
+
+  <!-- Firebase Scripts -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+
+  <script src="assets/firebase-config.js"></script>
+  <script src="assets/app.js"></script>
+
+  <script>
+    let currentUserId = null;
+    let currentFeeId = null;
+    let allStudents = [];
+
+    function showTab(tabName){
+      document.querySelectorAll('section').forEach(s => s.classList.add('hidden'));
+      document.getElementById(tabName + 'Tab')?.classList.remove('hidden');
+    }
+
+    function closeModal(modalId){
+      document.getElementById(modalId).classList.add('hidden');
+    }
+
+    function showModal(msg){
+      document.getElementById('modalText').innerText = msg;
+      document.getElementById('modal').classList.remove('hidden');
+    }
+
+    async function loadFeeOverview(){
+      const tbody = document.getElementById('feesOverviewTable');
+      tbody.innerHTML = '<tr><td class="p-3">Loading...</td></tr>';
+      try{
+        const fees = await window.app.getAllFeeRecords();
+        allStudents = await window.app.getStudents();
+        const studentsMap = {};
+        allStudents.forEach(s => studentsMap[s.id] = s);
+
+        let totalExpected = 0;
+        let totalPaid = 0;
+
+        tbody.innerHTML = fees.map(f => {
+          const student = studentsMap[f.studentId] || {};
+          totalExpected += f.agreedAmount || 0;
+          totalPaid += f.totalPaid || 0;
+          const status = f.balance <= 0 ? 'Paid' : 'Pending';
+          const statusColor = status === 'Paid' ? 'text-green-600' : 'text-red-600';
+
+          return `
+            <tr class="border-t hover:bg-gray-50">
+              <td class="p-3">${student.studentId || f.studentId}</td>
+              <td class="p-3">${student.name || '—'}</td>
+              <td class="p-3">₦${(f.agreedAmount || 0).toLocaleString()}</td>
+              <td class="p-3">₦${(f.totalPaid || 0).toLocaleString()}</td>
+              <td class="p-3">₦${(f.balance || 0).toLocaleString()}</td>
+              <td class="p-3 ${statusColor}">${status}</td>
+              <td class="p-3"><button onclick="openAddPaymentModal('${f.id}')" class="text-primary text-xs">Add Payment</button></td>
+            </tr>`;
+        }).join('');
+
+        document.getElementById('totalStudents').innerText = allStudents.length;
+        document.getElementById('totalExpected').innerText = '₦' + totalExpected.toLocaleString();
+        document.getElementById('totalPaid').innerText = '₦' + totalPaid.toLocaleString();
+      }catch(e){
+        tbody.innerHTML = '<tr><td class="p-3 text-red-600">Error loading fees</td></tr>';
+        console.error(e);
+      }
+    }
+
+    async function loadStudentsForSelect(){
+      try{
+        const select = document.getElementById('studentSelect');
+        select.innerHTML = '<option value="">Select a student...</option>';
+        if (!allStudents.length) {
+          allStudents = await window.app.getStudents();
+        }
+        select.innerHTML += allStudents.map(s => `<option value="${s.id}">${s.name} (${s.studentId})</option>`).join('');
+      }catch(e){ console.error(e); }
+    }
+
+    async function loadStudentFees(){
+      const studentId = document.getElementById('studentSelect').value;
+      if (!studentId) {
+        document.getElementById('studentFeesTable').innerHTML = '<tr><td class="p-3">Select a student first</td></tr>';
+        document.getElementById('downloadStudentBtn').style.display = 'none';
+        return;
+      }
+
+      document.getElementById('downloadStudentBtn').style.display = 'block';
+
+      const tbody = document.getElementById('studentFeesTable');
+      tbody.innerHTML = '<tr><td class="p-3">Loading...</td></tr>';
+      try{
+        const fees = await window.app.getFeeRecordsForStudent(studentId);
+        if (!fees.length) {
+          tbody.innerHTML = `<tr><td class="p-3">No fee records. <button onclick="openCreateFeeModal('${studentId}')" class="text-primary text-xs">Create one</button></td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = fees.map(f => `
+          <tr class="border-t">
+            <td class="p-3">${f.description || '—'}</td>
+            <td class="p-3">₦${(f.agreedAmount || 0).toLocaleString()}</td>
+            <td class="p-3">₦${(f.totalPaid || 0).toLocaleString()}</td>
+            <td class="p-3">₦${(f.balance || 0).toLocaleString()}</td>
+            <td class="p-3"><button onclick="viewPaymentHistory('${f.id}')" class="text-primary text-xs">History</button></td>
+          </tr>`).join('');
+      }catch(e){
+        tbody.innerHTML = '<tr><td class="p-3 text-red-600">Error loading fees</td></tr>';
+        console.error(e);
+      }
+    }
+
+    function viewPaymentHistory(feeId){
+      currentFeeId = feeId;
+      // Fetch and display payment history
+      window._firebase.db.collection('fees').doc(feeId).get().then(doc => {
+        if (doc.exists) {
+          const data = doc.data();
+          const payments = data.payments || [];
+          let html = '<table class="w-full text-sm"><thead><tr><th class="p-2">Date</th><th class="p-2">Amount</th><th class="p-2">Notes</th></tr></thead><tbody>';
+          payments.forEach(p => {
+            html += `<tr class="border-t"><td class="p-2">${p.date}</td><td class="p-2">₦${(p.amount || 0).toLocaleString()}</td><td class="p-2">${p.notes || '—'}</td></tr>`;
+          });
+          html += '</tbody></table>';
+          document.getElementById('paymentHistoryTable').innerHTML = html;
+          document.getElementById('paymentHistorySection').classList.remove('hidden');
+        }
+      });
+    }
+
+    function openAddPaymentModal(feeId){
+      currentFeeId = feeId;
+      document.getElementById('paymentAmount').value = '';
+      document.getElementById('paymentDate').value = new Date().toISOString().split('T')[0];
+      document.getElementById('paymentNotes').value = '';
+      document.getElementById('addPaymentModal').classList.remove('hidden');
+    }
+
+    function openCreateFeeModal(studentId){
+      document.getElementById('feeStudentId').value = studentId;
+      document.getElementById('feeAmount').value = '';
+      document.getElementById('feeDescription').value = '';
+      document.getElementById('createFeeModal').classList.remove('hidden');
+    }
+
+    async function savePayment(){
+      const amount = parseFloat(document.getElementById('paymentAmount').value);
+      const date = document.getElementById('paymentDate').value;
+      const notes = document.getElementById('paymentNotes').value;
+
+      if (!currentFeeId || !amount || !date) {
+        showModal('All fields required');
+        return;
+      }
+
+      try{
+        await window.app.addPayment(currentFeeId, amount, date, notes);
+        closeModal('addPaymentModal');
+        showModal('Payment added successfully');
+        loadFeeOverview();
+      }catch(e){
+        showModal(e.message || 'Error adding payment');
+      }
+    }
+
+    async function saveFeeRecord(){
+      const studentId = document.getElementById('feeStudentId').value;
+      const amount = parseFloat(document.getElementById('feeAmount').value);
+      const description = document.getElementById('feeDescription').value;
+
+      if (!studentId || !amount) {
+        showModal('Student and amount required');
+        return;
+      }
+
+      try{
+        await window.app.createFeeRecord(studentId, amount, description);
+        closeModal('createFeeModal');
+        showModal('Fee record created');
+        loadStudentFees();
+      }catch(e){
+        showModal(e.message || 'Error creating fee record');
+      }
+    }
+
+    // Initialize
+    (async function(){
+      if (!window.app) return;
+      window.app.requireRole('finance', 'index.html');
+
+      window._firebase?.auth.onAuthStateChanged(async user => {
+        if (user) {
+          document.getElementById('userEmail').innerText = user.email;
+          currentUserId = user.uid;
+          loadFeeOverview();
+          loadStudentsForSelect();
+        }
+      });
+
+    async function downloadFeeOverviewPDF(){
+      try{
+        const fees = await window.app.getAllFeeRecords();
+        const students = await window.app.getStudents();
+        const studentsMap = {};
+        students.forEach(s => studentsMap[s.id] = s);
+
+        if (!fees.length) {
+          alert('No fees to download');
+          return;
+        }
+
+        let htmlContent = `
+          <h2 style="text-align: center; font-size: 20px; margin-bottom: 20px;">Fee Overview Report</h2>
+          <p style="text-align: center; margin-bottom: 20px;">Generated: ${new Date().toLocaleDateString()}</p>
+          <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+            <thead>
+              <tr style="background-color: #f0f0f0;">
+                <th style="border: 1px solid #ddd; padding: 10px;">Student ID</th>
+                <th style="border: 1px solid #ddd; padding: 10px;">Student Name</th>
+                <th style="border: 1px solid #ddd; padding: 10px;">Agreed Amount</th>
+                <th style="border: 1px solid #ddd; padding: 10px;">Total Paid</th>
+                <th style="border: 1px solid #ddd; padding: 10px;">Balance</th>
+                <th style="border: 1px solid #ddd; padding: 10px;">Status</th>
+                <th style="border: 1px solid #ddd; padding: 10px;">Last Updated</th>
+              </tr>
+            </thead>
+            <tbody>`;
+
+        let totalExpected = 0, totalPaid = 0;
+
+        fees.forEach(f => {
+          const student = studentsMap[f.studentId] || {};
+          const agreed = f.agreedAmount || 0;
+          const paid = f.totalPaid || 0;
+          const balance = f.balance || 0;
+          const status = balance <= 0 ? 'Paid' : 'Pending';
+          totalExpected += agreed;
+          totalPaid += paid;
+
+          htmlContent += `
+            <tr>
+              <td style="border: 1px solid #ddd; padding: 10px;">${student.studentId || f.studentId}</td>
+              <td style="border: 1px solid #ddd; padding: 10px;">${student.name || '—'}</td>
+              <td style="border: 1px solid #ddd; padding: 10px; text-align: right;">₦${agreed.toLocaleString()}</td>
+              <td style="border: 1px solid #ddd; padding: 10px; text-align: right;">₦${paid.toLocaleString()}</td>
+              <td style="border: 1px solid #ddd; padding: 10px; text-align: right;">₦${balance.toLocaleString()}</td>
+              <td style="border: 1px solid #ddd; padding: 10px;">${status}</td>
+              <td style="border: 1px solid #ddd; padding: 10px;">${new Date(f.updatedAt?.toDate?.() || Date.now()).toLocaleDateString()}</td>
+            </tr>`;
+        });
+
+        htmlContent += `
+          <tr style="background-color: #f0f0f0; font-weight: bold;">
+            <td colspan="2" style="border: 1px solid #ddd; padding: 10px;">TOTAL</td>
+            <td style="border: 1px solid #ddd; padding: 10px; text-align: right;">₦${totalExpected.toLocaleString()}</td>
+            <td style="border: 1px solid #ddd; padding: 10px; text-align: right;">₦${totalPaid.toLocaleString()}</td>
+            <td colspan="3" style="border: 1px solid #ddd; padding: 10px;"></td>
+          </tr>
+        </tbody></table>`;
+
+        const element = document.createElement('div');
+        element.innerHTML = htmlContent;
+
+        const options = {
+          margin: 10,
+          filename: 'fee_overview.pdf',
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { scale: 2 },
+          jsPDF: { orientation: 'landscape', unit: 'mm', format: 'a4' }
+        };
+
+        html2pdf().set(options).from(element).save();
+      }catch(e){
+        console.error(e);
+        alert('Error downloading PDF: ' + e.message);
+      }
+    }
+
+    async function downloadStudentFeePDF(){
+      try{
+        const studentId = document.getElementById('studentSelect').value;
+        if (!studentId) {
+          alert('Please select a student first');
+          return;
+        }
+
+        const student = await window.app.getStudentById(studentId);
+        const fees = await window.app.getFeeRecordByStudent(studentId);
+        const payments = await window.app.getPaymentsByStudent(studentId);
+
+        let htmlContent = `
+          <h2 style="text-align: center; font-size: 20px; margin-bottom: 10px;">Student Fee Statement</h2>
+          <div style="margin-bottom: 20px;">
+            <p><strong>Student Name:</strong> ${student.name || '—'}</p>
+            <p><strong>Student ID:</strong> ${student.studentId || student.id}</p>
+            <p><strong>Email:</strong> ${student.email || '—'}</p>
+            <p><strong>Generated:</strong> ${new Date().toLocaleDateString()}</p>
+          </div>`;
+
+        if (fees) {
+          htmlContent += `
+            <h3 style="font-size: 16px; margin-top: 20px; margin-bottom: 10px;">Fee Summary</h3>
+            <table style="width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 20px;">
+              <tr>
+                <td style="border: 1px solid #ddd; padding: 10px;"><strong>Agreed Amount:</strong></td>
+                <td style="border: 1px solid #ddd; padding: 10px; text-align: right;">₦${(fees.agreedAmount || 0).toLocaleString()}</td>
+              </tr>
+              <tr>
+                <td style="border: 1px solid #ddd; padding: 10px;"><strong>Total Paid:</strong></td>
+                <td style="border: 1px solid #ddd; padding: 10px; text-align: right;">₦${(fees.totalPaid || 0).toLocaleString()}</td>
+              </tr>
+              <tr style="background-color: #f0f0f0; font-weight: bold;">
+                <td style="border: 1px solid #ddd; padding: 10px;">Balance:</td>
+                <td style="border: 1px solid #ddd; padding: 10px; text-align: right;">₦${(fees.balance || 0).toLocaleString()}</td>
+              </tr>
+            </table>`;
+        }
+
+        if (payments && payments.length) {
+          htmlContent += `
+            <h3 style="font-size: 16px; margin-top: 20px; margin-bottom: 10px;">Payment History</h3>
+            <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+              <thead>
+                <tr style="background-color: #f0f0f0;">
+                  <th style="border: 1px solid #ddd; padding: 10px;">Date</th>
+                  <th style="border: 1px solid #ddd; padding: 10px;">Amount</th>
+                  <th style="border: 1px solid #ddd; padding: 10px;">Method</th>
+                </tr>
+              </thead>
+              <tbody>`;
+
+          payments.forEach(p => {
+            htmlContent += `
+              <tr>
+                <td style="border: 1px solid #ddd; padding: 10px;">${new Date(p.createdAt?.toDate?.() || Date.now()).toLocaleDateString()}</td>
+                <td style="border: 1px solid #ddd; padding: 10px; text-align: right;">₦${(p.amount || 0).toLocaleString()}</td>
+                <td style="border: 1px solid #ddd; padding: 10px;">${p.method || '—'}</td>
+              </tr>`;
+          });
+
+          htmlContent += '</tbody></table>';
+        }
+
+        const element = document.createElement('div');
+        element.innerHTML = htmlContent;
+
+        const options = {
+          margin: 10,
+          filename: `fee_statement_${student.studentId || student.id}.pdf`,
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { scale: 2 },
+          jsPDF: { orientation: 'portrait', unit: 'mm', format: 'a4' }
+        };
+
+        html2pdf().set(options).from(element).save();
+      }catch(e){
+        console.error(e);
+        alert('Error downloading PDF: ' + e.message);
+      }
+    }
+
+      document.getElementById('logoutLink').addEventListener('click', async (e) => {
+        e.preventDefault();
+        await window.app.logout();
+        location.href = 'index.html';
+      });
+    })();
+  </script>
+</body>
+</html>
