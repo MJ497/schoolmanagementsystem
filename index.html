@@ -9,10 +9,13 @@
 </head>
 <body class="bg-gray-100 font-sans flex items-center justify-center min-h-screen">
 
-  <div class="bg-white w-full max-w-md p-8 rounded-xl shadow">
-    <h1 class="text-2xl font-semibold text-center text-primary mb-6">
+  <div class="bg-white w-full max-w-md p-8 rounded-xl shadow space-y-4">
+    <h1 class="text-2xl font-semibold text-center text-primary mb-2">
       School Management Login
     </h1>
+    <p class="text-center text-gray-500 text-sm mb-4">
+      Sign in to access your dashboard.
+    </p>
 
     <form id="loginForm" class="space-y-4">
       <input id="email" type="email" placeholder="Email"
@@ -25,10 +28,17 @@
         class="w-full bg-primary text-white py-2 rounded-lg hover:bg-red-700 transition">
         Login
       </button>
+
+      <div class="flex items-center justify-between text-sm mt-2">
+        <span class="text-gray-500">Forgot your password?</span>
+        <button id="forgotPasswordBtn" type="button" class="text-primary hover:underline">
+          Reset here
+        </button>
+      </div>
     </form>
   </div>
 
-  <!-- Modal -->
+  <!-- Success / Error Modal -->
   <div id="modal" class="hidden fixed inset-0 bg-black/40 flex items-center justify-center">
     <div class="bg-white p-6 rounded-lg w-80 text-center">
       <p id="modalText" class="mb-4"></p>
@@ -37,15 +47,17 @@
     </div>
   </div>
 
-<script>
-  function showModal(message) {
-    document.getElementById('modalText').innerText = message;
-    document.getElementById('modal').classList.remove('hidden');
-  }
-  function closeModal() {
-    document.getElementById('modal').classList.add('hidden');
-  }
-</script>
+<!-- Loading Modal -->
+<div id="loadingModal" class="hidden fixed inset-0 bg-black/40 flex items-center justify-center">
+  <div class="bg-white p-6 rounded-lg w-80 text-center flex flex-col items-center gap-3">
+    <svg class="animate-spin h-6 w-6 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+      <path class="opacity-75" fill="currentColor"
+        d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+    </svg>
+    <p id="loadingText" class="text-sm text-gray-700">Processing...</p>
+  </div>
+</div>
 <!-- Tailwind -->
 <script src="https://cdn.tailwindcss.com"></script>
 
@@ -79,6 +91,16 @@
 <script>
   const ADMIN_EMAIL = "admin@arena.com";
 
+  function showLoading(message) {
+    const textEl = document.getElementById('loadingText');
+    if (textEl && message) textEl.innerText = message;
+    document.getElementById('loadingModal')?.classList.remove('hidden');
+  }
+
+  function hideLoading() {
+    document.getElementById('loadingModal')?.classList.add('hidden');
+  }
+
   async function redirectByRole(){
     if (!window._firebase) return;
     const user = window._firebase.auth.currentUser;
@@ -105,6 +127,7 @@
       window.app.showModal('Please enter email and password');
       return;
     }
+    showLoading('Signing you in...');
     try{
       await window.app.loginWithEmail(email, password);
       
@@ -121,6 +144,26 @@
       await redirectByRole();
     }catch(e){
       window.app.showModal(e.message || 'Login failed');
+    }finally{
+      hideLoading();
+    }
+  });
+
+  // Forgot password
+  document.getElementById('forgotPasswordBtn').addEventListener('click', async () => {
+    const email = document.getElementById('email').value;
+    if (!email) {
+      window.app.showModal('Please enter your email above so we can send a reset link.');
+      return;
+    }
+    showLoading('Sending reset link...');
+    try{
+      await window.app.resetPassword(email);
+      window.app.showModal('Password reset email sent. Please check your inbox.');
+    }catch(e){
+      window.app.showModal(e.message || 'Failed to send reset email');
+    }finally{
+      hideLoading();
     }
   });
 

@@ -79,6 +79,18 @@
     </div>
   </div>
 
+  <!-- Loading Modal -->
+  <div id="loadingModal" class="hidden fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+    <div class="bg-white p-6 rounded-lg w-80 text-center flex flex-col items-center gap-3">
+      <svg class="animate-spin h-6 w-6 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor"
+          d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+      </svg>
+      <p id="loadingText" class="text-sm text-gray-700">Processing...</p>
+    </div>
+  </div>
+
   <!-- Firebase Scripts -->
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
@@ -103,6 +115,16 @@
     function showModal(msg){
       document.getElementById('modalText').innerText = msg;
       document.getElementById('modal').classList.remove('hidden');
+    }
+
+    function showLoading(message){
+      const textEl = document.getElementById('loadingText');
+      if (textEl && message) textEl.innerText = message;
+      document.getElementById('loadingModal')?.classList.remove('hidden');
+    }
+
+    function hideLoading(){
+      document.getElementById('loadingModal')?.classList.add('hidden');
     }
 
     async function loadMyStudents(){
@@ -138,6 +160,7 @@
       container.innerHTML = '<p class="text-gray-500">Loading...</p>';
 
       try{
+        showLoading('Loading attendance form...');
         if (!myStudents.length) {
           await loadMyStudents();
         }
@@ -212,6 +235,8 @@
       }catch(e){
         container.innerHTML = '<p class="text-red-600">Error loading attendance form</p>';
         console.error(e);
+      }finally{
+        hideLoading();
       }
     }
 
@@ -223,6 +248,7 @@
       }
 
       try{
+        showLoading('Saving attendance...');
         const radios = document.querySelectorAll('.attendanceRadio:checked');
         let saved = 0;
 
@@ -238,6 +264,8 @@
         showModal(`${saved} attendance record(s) saved`);
       }catch(e){
         showModal(e.message || 'Error saving attendance');
+      }finally{
+        hideLoading();
       }
     }
 
@@ -259,6 +287,7 @@
       container.innerHTML = '<p class="text-gray-500">Loading...</p>';
 
       try{
+        showLoading('Loading completion list...');
         if (!myStudents.length) {
           await loadMyStudents();
         }
@@ -314,6 +343,8 @@
       }catch(e){
         container.innerHTML = '<p class="text-red-600">Error loading completion form</p>';
         console.error(e);
+      }finally{
+        hideLoading();
       }
     }
 
@@ -321,11 +352,14 @@
       if (!confirm('Mark this student as completed in this class?')) return;
 
       try{
+        showLoading('Marking student as completed...');
         await window.app.markStudentAsCompleted(studentId, classId);
         showModal('Student marked as completed');
         loadCompletionForm();
       }catch(e){
         showModal(e.message || 'Error marking student as completed');
+      }finally{
+        hideLoading();
       }
     }
 

@@ -285,6 +285,18 @@
     </div>
   </div>
 
+  <!-- Loading Modal -->
+  <div id="loadingModal" class="hidden fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+    <div class="bg-white p-6 rounded-lg w-80 text-center flex flex-col items-center gap-3">
+      <svg class="animate-spin h-6 w-6 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor"
+          d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+      </svg>
+      <p id="loadingText" class="text-sm text-gray-700">Processing...</p>
+    </div>
+  </div>
+
   <!-- Firebase Scripts -->
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
@@ -314,6 +326,16 @@
     function showModal(msg){
       document.getElementById('modalText').innerText = msg;
       document.getElementById('modal').classList.remove('hidden');
+    }
+
+    function showLoading(message){
+      const textEl = document.getElementById('loadingText');
+      if (textEl && message) textEl.innerText = message;
+      document.getElementById('loadingModal')?.classList.remove('hidden');
+    }
+
+    function hideLoading(){
+      document.getElementById('loadingModal')?.classList.add('hidden');
     }
 
     function openAddStudentModal(){
@@ -475,12 +497,15 @@
       }
 
       try{
+        showLoading('Saving student...');
         await window.app.createStudent({ name, studentId, email, phone, classTeachers: currentClassTeacherPairs });
         closeModal('addStudentModal');
         showModal('Student added successfully');
         loadStudentsTable();
       }catch(e){
         showModal(e.message || 'Error adding student');
+      }finally{
+        hideLoading();
       }
     }
 
@@ -495,6 +520,7 @@
       }
 
       try{
+        showLoading('Creating user...');
         await window.app.createUser(email, password, role);
         closeModal('createUserModal');
         showModal(`${role.charAt(0).toUpperCase() + role.slice(1)} created successfully`);
@@ -502,6 +528,8 @@
         else loadFinanceTable();
       }catch(e){
         showModal(e.message || 'Error creating user');
+      }finally{
+        hideLoading();
       }
     }
 
@@ -515,12 +543,15 @@
       }
 
       try{
+        showLoading('Saving class...');
         await window.app.createClass(name, level);
         closeModal('addClassModal');
         showModal('Class added successfully');
         loadClassesTable();
       }catch(e){
         showModal(e.message || 'Error adding class');
+      }finally{
+        hideLoading();
       }
     }
 
@@ -625,38 +656,48 @@
     async function deleteStudentRecord(studentId){
       if (!confirm('Are you sure?')) return;
       try{
+        showLoading('Deleting student...');
         await window.app.deleteStudent(studentId);
         showModal('Student deleted successfully');
         loadStudentsTable();
       }catch(e){
         showModal(e.message || 'Error deleting student');
+      }finally{
+        hideLoading();
       }
     }
 
     async function deleteTeacher(teacherId){
       if (!confirm('Are you sure you want to delete this teacher?')) return;
       try{
+        showLoading('Deleting teacher...');
         await window.app.deleteUser(teacherId);
         showModal('Teacher deleted successfully');
         loadTeachersTable();
       }catch(e){
         showModal(e.message || 'Error deleting teacher');
+      }finally{
+        hideLoading();
       }
     }
 
     async function deleteFinanceUser(financeId){
       if (!confirm('Are you sure you want to delete this finance staff member?')) return;
       try{
+        showLoading('Deleting finance staff...');
         await window.app.deleteUser(financeId);
         showModal('Finance staff deleted successfully');
         loadFinanceTable();
       }catch(e){
         showModal(e.message || 'Error deleting finance staff');
+      }finally{
+        hideLoading();
       }
     }
 
     async function editClass(classId){
       try{
+        showLoading('Loading class...');
         const classes = await window.app.getClasses();
         const classData = classes.find(c => c.id === classId);
         if (!classData) {
@@ -669,6 +710,8 @@
         document.getElementById('editClassModal').classList.remove('hidden');
       }catch(e){
         showModal(e.message || 'Error loading class');
+      }finally{
+        hideLoading();
       }
     }
 
@@ -683,28 +726,35 @@
       }
 
       try{
+        showLoading('Updating class...');
         await window.app.updateClass(classId, { name, level });
         closeModal('editClassModal');
         showModal('Class updated successfully');
         loadClassesTable();
       }catch(e){
         showModal(e.message || 'Error updating class');
+      }finally{
+        hideLoading();
       }
     }
 
     async function deleteClass(classId){
       if (!confirm('Are you sure you want to delete this class?')) return;
       try{
+        showLoading('Deleting class...');
         await window.app.deleteClass(classId);
         showModal('Class deleted successfully');
         loadClassesTable();
       }catch(e){
         showModal(e.message || 'Error deleting class');
+      }finally{
+        hideLoading();
       }
     }
 
     async function editStudent(studentId){
       try{
+        showLoading('Loading student...');
         const student = await window.app.getStudentById(studentId);
         if (!student) {
           showModal('Student not found');
@@ -725,6 +775,8 @@
         document.getElementById('editStudentModal').classList.remove('hidden');
       }catch(e){
         showModal(e.message || 'Error loading student');
+      }finally{
+        hideLoading();
       }
     }
 
@@ -745,12 +797,15 @@
       }
 
       try{
+        showLoading('Updating student...');
         await window.app.updateStudent(studentId, { name, email, phone, classTeachers: editClassTeacherPairs });
         closeModal('editStudentModal');
         showModal('Student updated successfully');
         loadStudentsTable();
       }catch(e){
         showModal(e.message || 'Error updating student');
+      }finally{
+        hideLoading();
       }
     }
 

@@ -20,6 +20,12 @@ function logout(){
   return auth.signOut();
 }
 
+// Password reset
+function resetPassword(email){
+  if (!auth) return Promise.reject(new Error('Auth not initialized'));
+  return auth.sendPasswordResetEmail(email);
+}
+
 async function getStudents(){
   if (!db) return [];
   const snap = await db.collection('students').orderBy('name').get();
@@ -373,7 +379,7 @@ async function deleteUser(userId){
 // Expose functions
 window.app = { 
   // Auth
-  requireAuth, loginWithEmail, logout, 
+  requireAuth, loginWithEmail, logout, resetPassword,
   // Roles
   getUserRole, getCurrentUserRole, requireRole,
   // Students

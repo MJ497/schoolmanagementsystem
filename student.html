@@ -100,6 +100,18 @@
     </div>
   </div>
 
+  <!-- Loading Modal -->
+  <div id="loadingModal" class="hidden fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+    <div class="bg-white p-6 rounded-lg w-80 text-center flex flex-col items-center gap-3">
+      <svg class="animate-spin h-6 w-6 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor"
+          d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+      </svg>
+      <p id="loadingText" class="text-sm text-gray-700">Loading...</p>
+    </div>
+  </div>
+
   <!-- Firebase Scripts -->
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
@@ -126,8 +138,19 @@
       document.getElementById('modal').classList.remove('hidden');
     }
 
+    function showLoading(message){
+      const textEl = document.getElementById('loadingText');
+      if (textEl && message) textEl.innerText = message;
+      document.getElementById('loadingModal')?.classList.remove('hidden');
+    }
+
+    function hideLoading(){
+      document.getElementById('loadingModal')?.classList.add('hidden');
+    }
+
     async function loadProfile(){
       try{
+        showLoading('Loading profile...');
         // For now, student is identified by auth user email matching students collection
         const students = await window.app.getStudents();
         const user = window._firebase.auth.currentUser;
@@ -145,6 +168,8 @@
         document.getElementById('profileClasses').innerText = (studentData.classes || []).length + ' class(es)';
       }catch(e){
         console.error(e);
+      }finally{
+        hideLoading();
       }
     }
 
